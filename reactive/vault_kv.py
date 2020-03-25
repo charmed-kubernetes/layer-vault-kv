@@ -1,9 +1,15 @@
 from charmhelpers.core import hookenv, host
 from charms.reactive import when_all, when_not, set_flag, clear_flag
-from charms.reactive import endpoint_from_flag
+from charms.reactive import endpoint_from_flag, register_trigger
 from charms.reactive import data_changed
 
 from charms.layer import vault_kv
+
+
+register_trigger(when_not='vault-kv.connected',
+                 clear_flag='layer.vault-kv.ready')
+register_trigger(when_not='vault-kv.connected',
+                 clear_flag='layer.vault-kv.requested')
 
 
 @when_all('vault-kv.connected')
@@ -37,12 +43,6 @@ def check_config_changed():
             set_flag('layer.vault-kv.config.changed')
 
 
-@when_not('vault-kv.connected')
-def clear_ready():
-    clear_flag('layer.vault-kv.ready')
-    clear_flag('layer.vault-kv.requested')
-
-
 def manage_app_kv_flags():
     try:
         app_kv = vault_kv.VaultAppKV()
@@ -58,7 +58,7 @@ def update_app_kv_hashes():
         if hookenv.is_leader() and app_kv.any_changed():
             # force hooks to run on non-leader units
             hookenv.leader_set({'vault-kv-nonce': host.pwgen(8)})
-        app_kv.update_hashes()
+            app_kv.update_hashes()
     except vault_kv.VaultNotReady:
         return
 
